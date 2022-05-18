@@ -1,0 +1,87 @@
+name: Build image
+
+on:
+  workflow_call:
+    inputs:
+      aws-region:
+        required: true
+        type: string
+        description: AWS region for hosting container images
+      aws-username:
+        required: false
+        type: string
+        default: AWS
+        description: Username for ECR login, defaults to AWS
+      registry:
+        required: true
+        type: string
+        description: Container image registry (currently only ECR is supported)
+      image:
+        required: true
+        type: string
+        description: Container image name to build, usually based on repo
+      tag:
+        required: true
+        type: string
+        description: Container image tag, usually a commit sha
+      build-target:
+        required: true
+        type: string
+        description: Container image build target. Dev image automatically
+    secrets:
+      aws-access-key-id:
+        required: true
+      aws-secret-access-key:
+        required: true
+      ssh-private-key:
+        required: true
+
+jobs:
+  build-and-push-image:
+    name: Build Image
+    runs-on: [ self-hosted, physical ]
+    steps:
+      - name: 🛎 Checkout Shpock-API
+        uses: actions/checkout@v3
+
+      - name: ☁ Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.aws-access-key-id }}
+          aws-secret-access-key: ${{ secrets.aws-secret-access-key }}
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: ☁ Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: 🔐 Run SSH Agent
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.ssh-private-key }}
+
+      - name: 📦 Image registry login
+        run: |
+          aws ecr get-login-password --region ${{ inputs.aws-region }} | docker login --username ${{ inputs.aws-username }} --password-stdin ${{ inputs.registry }}
+
+      - name: 🏗 Build prod image
+        run: |
+          docker buildx build \
+            --ssh default \
+            --target "${{ inputs.build-target }}" \
+            --tag "${{ inputs.registry }}/${{ inputs.image }}:${{ inputs.tag }}" \
+          "."
+
+      - name: 🏗 Build dev image
+        run: |
+          docker buildx build \
+            --ssh default \
+            --target "${{ inputs.build-target }}-dev" \
+            --tag "${{ inputs.registry }}/${{ inputs.image }}:${{ inputs.tag }}-dev" \
+          "."
+
+      - name: 🚚 Push images
+        run: |
+          docker push "${{ inputs.registry }}/${{ inputs.image }}:${{ inputs.tag }}"
+          docker push "${{ inputs.registry }}/${{ inputs.image }}:${{ inputs.tag }}-dev"
+
