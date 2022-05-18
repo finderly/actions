@@ -11,11 +11,11 @@ on:
         required: false
         type: string
         default: AWS
-        description: Username for ECR login, defaults to AWS
+        description: Username for AWS Elastic Container Registry (ECR) login
       registry:
         required: true
         type: string
-        description: Container image registry (currently only ECR is supported)
+        description: AWS ECR address
       image:
         required: true
         type: string
@@ -27,7 +27,7 @@ on:
       build-target:
         required: true
         type: string
-        description: Container image build target. Dev image automatically
+        description: Container image build target. Dev image automatically appended with `-dev`
     secrets:
       aws-access-key-id:
         required: true
