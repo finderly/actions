@@ -42,7 +42,7 @@ jobs:
     runs-on: [ self-hosted, physical ]
     steps:
       - name: 🛎 Checkout Shpock-API
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: ☁ Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
